@@ -15,8 +15,11 @@ configData.general = {
 	"welcomeMessage" : "Hello! Welcome to the actionHero api",
 	// The location of this package relative to your project
 	"apiBaseDir": "./node_modules/actionHero/",
+	// The directory which will be the root for the /public route
 	"flatFileDirectory": "./node_modules/actionHero/public/",
-	"flatFileNotFoundMessage": "Sorry, that file is not found :(",
+	// The body message to acompany 404 (file not found) errors regading flat files
+ 	"flatFileNotFoundMessage": "Sorry, that file is not found :(",
+ 	// The body message to acompany 404 (file not found) errors regading directories
 	"flatFileIndexPageNotFoundMessage": "Sorry, there is no index page for this folder :(",
 	// the chatRoom that TCP and webSocket clients are joined to when the connect
 	"defaultChatRoom": "defaultRoom",
@@ -43,7 +46,7 @@ configData.log = {
 ///////////
 
 configData.redis = {
-	"enable": true,
+	"enable": false,
 	"host": "127.0.0.1",
 	"port": 6379,
 	"password": null,
@@ -75,7 +78,7 @@ configData.commonWeb = {
 
 configData.httpServer = {
 	"enable": true,
-	"port": 8080,
+	"port": (process.env.VCAP_APP_PORT || 8080),
 	// which IP to listen on (use 0.0.0.0 for all)
 	"bindIP": "0.0.0.0"
 };
@@ -85,7 +88,7 @@ configData.httpServer = {
 //////////////////
 
 configData.httpsServer = {
-	"enable": true,
+	"enable": false,
 	"port": 4443,
 	"keyFile": "./certs/server-key.pem",
 	"certFile": "./certs/server-cert.pem",
@@ -98,7 +101,7 @@ configData.httpsServer = {
 ////////////////
 
 configData.tcpServer = {
-	"enable": true,
+	"enable": false,
 	"port": 5000,
 	// which IP to listen on (use 0.0.0.0 for all)
 	"bindIP": "0.0.0.0"
@@ -110,7 +113,7 @@ configData.tcpServer = {
 
 configData.webSockets = {
 	// You must have either the http or https server enabled for websockets
-	"enable": true,
+	"enable": false,
 	// which web interface to bind the websockets to (http or https)
 	"bind" : "http"
 };
