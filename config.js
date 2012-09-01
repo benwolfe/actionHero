@@ -49,10 +49,10 @@ configData.log = {
 ///////////
 
 configData.redis = {
-	"enable": false,
-	"host": "127.0.0.1",
-	"port": 6379,
-	"password": null,
+	"enable": true,
+	"host": process.env.REDIS_HOST,
+	"port": process.env.REDIS_PORT,
+	"password": process.env.REDIS_PASSWORD,
 	"options": null,
 	"DB": 0
 };
