@@ -1,4 +1,4 @@
-var specHelper = require('../_specHelper.js').specHelper;
+var specHelper = require('../helpers/_specHelper.js').specHelper;
 var suite = specHelper.vows.describe('API general functions');
 var apiObj = {};
 
@@ -48,12 +48,12 @@ suite.addBatch({
   }
 });
 
-// suite.addBatch({
-//   "api.stats": {
-//     topic: function(){ return apiObj },
-//     'should exist: objects' : function(api){ specHelper.assert.isObject(api.stats); },
-//   }
-// });
+suite.addBatch({
+  "api.stats": {
+    topic: function(){ return apiObj },
+    'should exist: objects' : function(api){ specHelper.assert.isObject(api.stats); },
+  }
+});
 
 suite.addBatch({
   "api.postVariables": {

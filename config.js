@@ -9,14 +9,14 @@ var configData = {};
 /////////////////////////
 
 configData.general = {
-	"apiVersion": "3.0.0",
+	"apiVersion": "3.0.6",
 	"serverName": "actionHero API",
 	// The welcome message seen by TCP and webSocket clients upon connection
 	"welcomeMessage" : "Hello! Welcome to the actionHero api",
 	// The location of this package relative to your project
 	"apiBaseDir": "./node_modules/actionHero/",
 	// The directory which will be the root for the /public route
-	"flatFileDirectory": "./node_modules/actionHero/public/",
+	"flatFileDirectory": "./public/",
 	// The body message to acompany 404 (file not found) errors regading flat files
  	"flatFileNotFoundMessage": "Sorry, that file is not found :(",
  	// The body message to acompany 404 (file not found) errors regading directories
@@ -27,6 +27,9 @@ configData.general = {
 	// These params will always be appended to any request as "limit" and "offest" unless set by the client
 	"defaultLimit": 100,
 	"defaultOffset": 0,
+	// The number of internal "workers" this node will have.
+	// Remember these are logical timers (not threads) so they will block if they are computationally intense
+	"workers" : 3,
 };
 
 /////////////
@@ -70,6 +73,10 @@ configData.commonWeb = {
 	// when visiting the root URL, should visitors see "api" or "public"?
 	// visitors can always visit /api and /public as normal
 	"rootEndpointType" : "api",
+	// the default filetype to server when a user requests a directory
+	"directoryFileType" : "index.html",
+	// the header which will be returend for all flat file served from /public.  I am defiend in seconds
+	"flatFileCacheDuration" : 60,
 };
 
 /////////////////
@@ -115,7 +122,13 @@ configData.webSockets = {
 	// You must have either the http or https server enabled for websockets
 	"enable": false,
 	// which web interface to bind the websockets to (http or https)
-	"bind" : "http"
+	"bind" : "http",
+	"logLevel" : 1,
+	"settings" : [
+		"browser client minification",
+		"browser client etag",
+		"browser client gzip"
+	]
 };
 
 //////////////////////////////////

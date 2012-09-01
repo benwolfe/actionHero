@@ -44,15 +44,13 @@ var createActionHero = function(){
 		api.io = require('socket.io');
 				
 		// backwards compatibility for old node versions
-		if(process.version.split(".")[0] == "v0" && process.version.split(".")[1] <= "6"){
-			api.fs.existsSync = api.path.existsSync;
-			api.fs.exists = api.path.exists;
-		}
+		api.fs.existsSync || (api.fs.existsSync = api.path.existsSync);
+		api.fs.exists || (api.fs.exists = api.path.exists);
 
 		if(api.fs.existsSync(process.cwd() + '/config.js')){
 			api.configData = require(process.cwd() + '/config.js').configData;
 		}else{
-			var defualtConfigFile = "./node_modules/actionHero/config.js";
+			var defualtConfigFile = __dirname + "/config.js";
 			if(params.configChanges == null){
 				console.log(' >> no local config.json found nor no provided configChanges; using default from '+defualtConfigFile);
 			}else{
@@ -78,7 +76,7 @@ var createActionHero = function(){
 			var folder = initializerFolders[i];
 			if(api.fs.existsSync(folder)){
 				api.fs.readdirSync(folder).forEach( function(file) {
-					if (file != ".DS_Store"){
+					if (file[0] != "."){
 						var initalizer = file.split(".")[0];
 						if(require.cache[initializerFolders[i] + file] != null){
 							delete require.cache[initializerFolders[i] + file];
@@ -89,7 +87,7 @@ var createActionHero = function(){
 			}
 		}
 			
-		api.utils = require(__dirname + '/utils.js').utils;
+		api.utils = require(__dirname + '/helpers/utils.js').utils;
 
 		// determine my unique ID
 		var externalIP = api.utils.getExternalIPAddress();
@@ -105,43 +103,44 @@ var createActionHero = function(){
 
 		var successMessage = "*** Server Started @ " + api.utils.sqlDateTime() + " ***";
 		api.bootTime = new Date().getTime();
-			
-		// Loading pyrimid of doom.
-		actionHero.initLog(api, function(){
-			api.log("server ID: " + api.id);
-			actionHero.initRedis(api, function(){
-				actionHero.initCache(api, function(){
-					actionHero.initStats(api, function(){
-						actionHero.initActions(api, function(){
-							actionHero.initPostVariables(api, function(){
-								actionHero.initFileServer(api, function(){
-									actionHero.initWebServer(api, function(){
-										actionHero.initWebSockets(api, function(){
-											actionHero.initSocketServer(api, function(){ 
-												actionHero.initChatRooms(api, function(){ 
-													actionHero.initTasks(api, function(){
-														if(typeof params.initFunction == "function"){
-															params.initFunction(api, function(){
-																api.log(successMessage, ["green", "bold"]);
-																actionHero.running = true;
-																if(callback != null){ process.nextTick(function() { callback(api); }); }
-															})
-														}else{
-															api.log(successMessage, ["green", "bold"]);
-															actionHero.running = true;
-															if(callback != null){ process.nextTick(function() { callback(api); }); }
-														}
-													});
-												});
-											});
-										});
-									});
-								});
-							});
-						});
-					});
-				});
-			});
+
+		// run the initializers
+		api.async.series({
+			initLog: function(next){ actionHero.initLog(api, next); },
+			initRedis: function(next){ actionHero.initRedis(api, next); },
+			initCache: function(next){ actionHero.initCache(api, next); },
+			initActions: function(next){ actionHero.initActions(api, next); },
+			initPostVariables: function(next){ actionHero.initPostVariables(api, next); },
+			initFileServer: function(next){ actionHero.initFileServer(api, next); },
+			initStats: function(next){ actionHero.initStats(api, next); },
+			initWebServer: function(next){ actionHero.initWebServer(api, next); },
+			initWebSockets: function(next){ actionHero.initWebSockets(api, next); },
+			initSocketServer: function(next){ actionHero.initSocketServer(api, next); },
+			initChatRooms: function(next){ actionHero.initChatRooms(api, next); },
+			initTasks: function(next){ actionHero.initTasks(api, next); },
+			_user_init: function(next){
+				if(typeof params.initFunction == "function"){
+					params.initFunction(api, function(){
+						next();
+					})
+				}else{
+					next();
+				}
+			},
+			startTaskProcessing: function(next){ 
+				api.tasks.startTaskProcessing(api, next);
+			},
+			_complete: function(next){
+				api.log("server ID: " + api.id);
+				api.log(successMessage, ["green", "bold"]);
+				actionHero.running = true;
+				if(callback != null){ 
+					callback(api); 
+					// next();
+				}else{
+					// next();
+				}
+			},
 		});
 	};
 

@@ -1,15 +1,15 @@
 {
   "author": "Evan Tahler <evantahler@gmail.com>",
   "name": "actionHero",
-  "description": "actionHero is a node.js API framework for both tcp sockets and http clients",
-  "version": "3.0.0",
+  "description": "actionHero is a node.js API framework for both tcp sockets, web sockets, and http clients.  The goal of actionHero are to create an easy-to-use toolkit for making reusable & scalable APIs",
+  "version": "3.0.6",
   "homepage": "http://actionherojs.com",
   "repository": {
     "type": "git",
     "url": "git://github.com/evantahler/actionHero.git"
   },
   "main": "api",
-  "keywords": ["socket", "http", "game", "cluster", "soa", "service", "api", "tcp"],
+  "keywords": ["socket", "http", "https", "web sockets", "game", "cluster", "soa", "action", "task", "delay", "service", "api", "tcp"],
   "engines": {
     "node": ">=0.6.0"
   },
@@ -21,7 +21,6 @@
     "colors":"0.x.x",
     "data2xml":"x",
     "mime":"1.x.x",
-    "hiredis":"0.x.x",
     "redis":"x",
     "socket.io":"0.9.x"
 	},
@@ -29,7 +28,11 @@
     "vows":"0.x.x"
   },
   "scripts": {
-	  "start": "./actionHero",
-	  "test": "./node_modules/.bin/vows spec/* -v --dot-matrix"
+    "start": "./scripts/actionHero",
+	  "install": "./scripts/install",
+	  "test": "./node_modules/.bin/vows spec/* -v --dot-matrix",
+    "generate" : "./scripts/generate",
+    "generateAction" : "./scripts/generateAction",
+    "generateTask" : "./scripts/generateTask"
   }
 }

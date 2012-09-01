@@ -1,8 +1,13 @@
 # node.js actionHero API Framework
+
 [![Build Status](https://secure.travis-ci.org/evantahler/actionHero.png?branch=master)](http://travis-ci.org/evantahler/actionHero)
 
+[![Endorse Me](http://api.coderwall.com/evantahler/endorsecount.png)](http://coderwall.com/evantahler)
+
+Links: [NPM](https://npmjs.org/package/actionHero) | [Public Site](http://www.actionherojs.com) | [GitHub](https://github.com/evantahler/actionHero) | [Client](https://github.com/evantahler/actionhero_client)
+
 ## Who is the actionHero?
-actionHero is a [node.js](http://nodejs.org) **API framework** for both **tcp sockets**, **web sockets**, and **http clients**.  The goal of actionHero are to create an easy-to-use toolkit for making **reusable**, **scalable**, and **polygot** APIs.
+actionHero is a [node.js](http://nodejs.org) **API framework** for both **tcp sockets**, **web sockets**, and **http clients**.  The goal of actionHero are to create an easy-to-use toolkit for making **reusable** & **scalable** APIs.
 
 actionHero servers can process both requests and tasks (delayed actions like `send e-mail` or other background jobs).  actionHero servers can also run in a cluster (on the same or multiple machines) to work in concert to handle your load.
 
@@ -184,6 +189,7 @@ You can also access actionHero's methods via a persistent socket connection rath
 * `paramsDelete` - deletes all params set to this session
 * `roomChange` - change the `room` you are connected to.  By default all socket connections are in the `api.configData.defaultChatRoom` room.   
 * `roomView` - show you the room you are connected to, and information about the members currently in that room.
+* `detailsView` - show you details about your connection, including your public ID.
 * `say` [message]
 
 Please note that any params set using the above method will be 'sticky' to the connection and sent for all subsequent requests.  Be sure to delete or update your params before your next request.
@@ -256,6 +262,11 @@ Just like the additional actions added for TCP connection, web socket connection
 			if (params == null){ params = {}; )
 			params['action'] = action;
 			socket.emit("action", params);
+		}
+
+		// get my details
+		var getDetails = function(){
+			socket.emit("detailsView");
 		}
 	
 		// chat room functions
@@ -389,36 +400,23 @@ This task will be run every ~1 second on the first peer to be free after that on
 * redis (for actionCluster)
 
 ## Install & Quickstart
-* `npm install actionHero`
+
+**tl;dr: `mkdir ~/project && cd ~/project; npm install actionHero; npm run-script actionHero generate; npm start`**
+
+* Create a new directory `mkdir ~/project && cd ~/project`
+* Checkout the actionHero source `npm install actionHero`
+* Use the generator to create a template project `npm run-script actionHero generate`
 * Create a new file called `index.js`
+* Start up the server: `npm start`
 
-The contents of `index.js` should look something like this:
+Visit `http://127.0.0.1:8080` in your browser and telnet to `telnet localhost 5000` to see the actionHero in action!
 
-	// load in the actionHero class
-	var actionHero = require("actionHero").actionHero;
-	
-	// if there is no config.js file in the application's root, then actionHero will load in a collection of default params.  You can overwrite them with params.configChanges
-	var params = {};
-	var params = {};
-	params.configChanges = {
-		general: {
-			flatFileDirectory: "./public/"
-		}
-	}
-	
-	// start the server!
-	actionHero.start(params);
-
-* Start up the server: `node index.js`
-
-You will notice that you will be getting warning messages about how actionHero is using default files contained within the NPM package.  This is normal until you replace those files with your own versions.  Visit `http://127.0.0.1:8080` in your browser and telnet to `telnet localhost 5000` to see the actionHero in action!
-
-You can programatically control an actionHero server with `actionHero.start(params, callback)`, `actionHero.stop(callback)` and `actionHero.restart(callback)`
+You can programmatically control an actionHero server with `actionHero.start(params, callback)`, `actionHero.stop(callback)` and `actionHero.restart(callback)`
 
 	var timer = 5000;
 	actionHero.start(params, function(api){
 		
-		api.log(" >> Boot Sucessful!");
+		api.log(" >> Boot Successful!");
 		setTimeout(function(){
 			
 			api.log(" >> restarting server...");
@@ -441,46 +439,7 @@ You can programatically control an actionHero server with `actionHero.start(para
 	
 ## Application Structure
 
-The actionCluster module contains no native code and is arranged like this:
-
-	/
-	|- actions
-	|-- (the base actions)
-	|
-	|- certs
-	|-- (example certs for the https server, keyed for 'localhost')
-	|
-	|- examples
-	|-- (some common examples of using actionHero in the actionCluster)
-	|
-	|- initializers
-	|-- (the common initializers for he web and socket servers, actions, logging, etc)
-	|
-	|- node_modules
-	|-- (actionHero dependancies get installed here)
-	|
-	|- public
-	|-- (default location for public assets served by /file path)
-	|
-	|- spec
-	|-- (tests)
-	|
-	|- tasks
-	|-- (default tasks)
-	|
-	_specHelper.js
-	actionHero
-	api.js
-	config.js
-	license.txt
-	package.json
-	readme.markdown
-	utils.js
-	versions.markdown
-	
-Your application structure should look similar.  
-
-actions in /actions will be loaded in automatically, along /initializers and /tasks. /public will become your applicaiton's default static asset location.  You can make your own config.json in your application root with only the partial changes you want to use over the default settings.
+Actions in /actions will be loaded in automatically, along /initializers and /tasks. /public will become your applicaiton's default static asset location.  You can make your own config.json in your application root with only the partial changes you want to use over the default settings.
 
 	/
 	|- actions
@@ -637,14 +596,20 @@ Create a `config.js` file in the root of your project.  Here is the default conf
 		// You must have either the http or https server enabled for websockets
 		"enable": true,
 		// which web interface to bind the websockets to (http or https)
-		"bind" : "http"
+		"bind" : "http",
+		"logLevel" : 1,
+		"settings" : [
+			"browser client minification",
+			"browser client etag",
+			"browser client gzip"
+		]
 	};
 	
 	//////////////////////////////////
 	
 	exports.configData = configData;
 
-## Default Content
+## Example Content
 __Actions__:
 
 * cacheTest - a test of the DB-based key-value cache system
@@ -675,7 +640,7 @@ Params are loaded in this order GET -> POST (normal) -> POST (multipart).  This 
 The `api.log()` method is available to you throughout the application.  `api.log()` will both write these log messages to file, but also display them on the console.  There are formatting options you can pass to `api.log(yourMessage, options=[])`.  The options array can be many colors and formatting types, IE: `['blue','bold']`.  Check out `/initializers/initLog.js` to see the options.
 
 ## Versions of this API
-see `[versions.markdown](https://github.com/evantahler/actionHero/blob/master/versions.markdown)` to see what's new in each version
+see [versions.md](https://github.com/evantahler/actionHero/blob/master/versions.md) to see what's new in each version
 
 ## Who?
 * The primary creator of the actionHero framework is [Evan Tahler](http://evantahler.com)

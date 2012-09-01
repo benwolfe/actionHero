@@ -1,14 +1,86 @@
 # Action Hero API Versions
 
+## Version 3.0.6
+
+**Chat Rooms**
+
+- Events Emitted when folks enter/leave the room you are in
+
+**Socket / WebSocket Clients**
+
+- New Method `detailsView` to retrieve information about yourself (including your public ID)
+
+## Version 3.0.5
+
+**File Server**
+
+- Files will now be served with a default cache-duration of 0 seconds.  Setting added to configure this
+- Default files for directories is still "index.html", but this is now configurable.
+- accessing directories works without the trailing slash (IE: http://localhost:8080/public resolves the same as http://localhost:8080/public/)
+- the `Cache-Controll` is returned along with `Expires` header
+
+**Better Logging**
+
+- separation between file and action logging
+- better shared syntax for all types of connections
+- files log the path they were accessed from and duration
+
+**Project Organization**
+
+- You can now orginize your tasks and actions in sub-folders
+- You can now symlink actions/taks into your project
+- You can now symlink files in /public
+
+**General Bug Fixes**
+
+- better logic for including base config.json when you don't provide one
+- updates for travis.ci
+
+## Version 3.0.4
+
+**General Bug Fixes**
+
+- fixed bugs regearding load order of initializers and user-added initializers
+- fixed a bug introduced in the previous version which may double-enqueue tasks 
+
+## Version 3.0.3
+
+**Notes**
+
+- Configuration to set how many task workers each actionHero node has.  You now are **requried** to set `api.configData.general.workers`
+- Added generators for actions and tasks
+  - `npm run-script actionHero generateAction`
+  - `npm run-script actionHero generateTask`
+
+## Version 3.0.2
+
+**General Bug Fixes**
+
+- fixed bugs where some tasks would not allow the task queue to continue even if they had been completed
+- fixed a bug where non-redis tasks wouldn't be re-enqueued
+- spelling
+
+## Version 3.0.1
+
+**Project Generator**
+
+- A project Generator!
+  - You can start up a new project in an empty directory with `npm install actionHero && npm run-script actionHero generate`.  This will create project structure and copy in some default actions and tasks.  
+- Only tasks present in your project will be loaded (like actions).  Now that there is a generator which will copy in some default actions, loading tasks within actionHero is not needed.
+- Project reorganization per the above
+- remove hredis from the project
+  - hredis is awesome, but this makes the project have less complex compiled dependancies.  You should add it to your project if you want fast redis communication, but it isn't *required* for actionHero to function
+- This release adds more configuration options to webSockets in the form of `api.configData.webSockets.logLevel` (integer) and `configData.webSockets.settings` (which is an array strings which will be applied to socketIO's 'set' command)
+
 ## Version 3.0.0
 
-** WebSockets and a better configuration system **
+**WebSockets and a better configuration system**
 
 *This is a major release.  Sections of older actionHero projects will be incompatible with this release.*
 
 This release adds web socket support to the project, and abstracts the chat room system to be available generically to all types of persistently-connected clients.  This release also updates the configuration system to allow developers to use any/all/none of the connection methods.  This should make it easier to add more and more communication protocols to the project.
 
-** Notes **
+**Notes**
 
 General
 
@@ -24,12 +96,12 @@ Actions
 
 Chat
 
-- new initializer to make chat availalbe to all persistant-socket clients
+- new initializer to make chat available to all persistent-socket clients
 - new `api.chatRoom` namespace for chat functions (IE: `api.socketServer.socketRoomBroadcast` => `api.chatRoom.socketRoomBroadcast`)
 
 Web Sockets
 
-- socket.io a dependancy of the project
+- socket.io a dependency of the project
 - socket.io client JS symlikned to /public
 - websocket example created
 - status counts for webSockets
@@ -50,9 +122,9 @@ Examples
 - actionHero now has a REPL! You can use the command line to use all the api-namespaced functions and define your own.  Great for debugging or checking on the status of the cluster.  
 - Checkout the /examples folder for how to use the actionHeroClient package, browser javascript, and curl to interface with actionHero.  More languages coming soon.
 
-** Notes **
+**Notes**
 
-- cache actions now take miliseconds like everything else.
+- cache actions now take milliseconds like everything else.
 - you can now have non-expiring cache entires (just pass a null value for expireTimeMS)
 - there are no no default periodically-run tasks.  Look in `/examples` for the tasks that used to be there and copy them into your own project's /tasks folder.  This was done to reduce the 'magic' in the framework.  the runTask task still remains, as it was not run periodically.
 
@@ -63,13 +135,13 @@ Examples
 
 **Summary:** Bug Fixes & Examples
 
-** Details **
-Check the notes for the bug fixes.  There are now also more examples in the prject, showing off how you can connect from various enviorments.  This also ccoencides with the release of the [actionHeroClient](https://github.com/evantahler/actionHeroNodeClient) NPM package.  More coming soon.  
+**Details**
+Check the notes for the bug fixes.  There are now also more examples in the project, showing off how you can connect from various environments.  This also coincides with the release of the [actionHeroClient](https://github.com/evantahler/actionHeroNodeClient) NPM package.  More coming soon.  
 
-** Notes **
+**Notes**
 
-- Updates to how socket client requests are tracked to enfore proper message IDs.  If you directly used `api.processAction` before, the interface has changed.
-- running the test suite will now use a seperate redis db.  You can also set this in config.json for your app.
+- Updates to how socket client requests are tracked to enforce proper message IDs.  If you directly used `api.processAction` before, the interface has changed.
+- running the test suite will now use a separate redis db.  You can also set this in `config.json` for your app.
 - better logic to ensure that tasks are enqueued properly
 - cluster members will remove stale tasks they were working on when the app is started (in case of a crash)
 
@@ -80,15 +152,15 @@ Bug Fixes
 
 ** Redis-powered Cluster & major refactor **
 
-** Details **
+**Details**
 
 This version realizes the dream of a true cluster for actionHero.  There is no longer a need for a master process, and every node in the cluster can work alone or in a group.  This release also enables using the node.js cluster module to make the most of your server(s).  
 
-*This version is likley to be incompatible with prior versions.  Running an actionCluster now requires redis (running a single node does not require redis and is still a pure node.js implementation).*
+*This version is likely to be incompatible with prior versions.  Running an actionCluster now requires redis (running a single node does not require redis and is still a pure node.js implementation).*
 
 Using a [redis](http://redis.io/) backend, actionHero nodes can now share memory objects and have a common queue for tasks.  Philosophically, we have changed from a mesh network to a queue-based network.  This means that no longer will every node talk to every other node, but rather all nodes will talk to redis.  Now, I know that you are thinking "isn't that bad because it creates a single point of failure?"  Normally, the answer is yes, but redis already has mesh networking support! The suggested method of deployment is to setup a redis instance on each server, and they will handle the mesh networking for you.  
 
-`api.cache` now works in a shared way if you are part of an actionCluster.  All cache actions refer to redis and in this way, all peers can have access to shared ojects.  To avoid conflicts, you will have access to 'lastReadAt' as part of `api.cache.load` responses.  actionHero will also no longer store its own cache to disc periodically as redis does this already.
+`api.cache` now works in a shared way if you are part of an actionCluster.  All cache actions refer to redis and in this way, all peers can have access to shared objects.  To avoid conflicts, you will have access to 'lastReadAt' as part of `api.cache.load` responses.  actionHero will also no longer store its own cache to disc periodically as redis does this already.
 
 The task system also has undergone some major refactoring.  All tasks are now stored in a shared queue within redis.  All peers will periodically check the queue for unfilled tasks, and drain the queue one at a time.  In this manner, you can add more task capacity by spinning up more actionHero nodes which may or may not also handle web/socket traffic.  This also means that tasks will not get lost if a node crashes as they will remain in the redis queue until drained.  Each peer also has a 'personal' task queue for "all" actions.
 
@@ -106,7 +178,7 @@ There are new requirements to `config.json` to configure redis.  Here is an exam
 
 All methods under the `api.actionCluster` namespace have been removed for simplicity.  Just use the normal cache methods, and if you are in a cluster, you will operate in a shared memory space.
 
-** Notes **
+**Notes**
 
 - all peers now share the same `api.cache` data
 - api.tasks.enqueue is now `api.tasks.enqueue(api, taskName, runAtTime, params)`  Set runAtTime to 0 to run the task as soon as possible
@@ -115,14 +187,14 @@ All methods under the `api.actionCluster` namespace have been removed for simpli
 - the entire `actionCluster` namesapace has been removed
 - there are new requirements to `config.json` to setup redis
 - every node will try to handle requests and process one job pending in the task queue at a time
-- shared tasks will be prefered over per-node tasks
+- shared tasks will be preferred over per-node tasks
 - the 'status' action has some new output types to reflect 'global' stats in comparison to 'local' stats (IE: count of web requests that this node has served vs total)
 
 ## Version 1.0.3
 
 ** Optional Headers **
 
-** Details **
+**Details**
 
 - You can now define custom host-headers in `config.json` which will be sent with every http/https response
 - bug fixes introduced with task sharing (v 1.0.1)
@@ -131,7 +203,7 @@ All methods under the `api.actionCluster` namespace have been removed for simpli
 
 ** Task Sharing **
 
-** Details **
+**Details**
 
 - The master process will now delegate tasks in his queue to other peers in the cluster.
 - Minor bug fixes
@@ -140,10 +212,10 @@ All methods under the `api.actionCluster` namespace have been removed for simpli
 
 ** SSL / HTTPS web server **
 
-** Details **
+**Details**
 
 * You can now spin up a secure https server along with you http server in action hero.  It will work exactly the same as the http server, and you can have both on at the same time with no overhead.
-    * There are new configuration settins in `config.json` for this below
+    * There are new configuration settings in `config.json` for this below
 
 Settings for https server:
 
@@ -169,9 +241,9 @@ Settings for https server:
 * The last message sent by a socket client can now be read by inspecting `connection.lastLine`
 * Better error handling if the socket / web port are in use
 * Cleanup of the example HTML pages
-* HTTP requets will now return serverInformation.currentTime
+* HTTP requests will now return serverInformation.currentTime
 * The original server (the one with no `configData.actionCluster.startingPeer` will be the only server to run 'any' tasks)
-	* Other servers will NOT assume the role of runing "any" tasks, but they will keep them in memory until the master server comes back upon a crash.
+	* Other servers will NOT assume the role of running "any" tasks, but they will keep them in memory until the master server comes back upon a crash.
 * Using the node-mime module
 * Adding 10 min cache-control to flat files
 

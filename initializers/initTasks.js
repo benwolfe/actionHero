@@ -5,9 +5,9 @@ var initTasks = function(api, next)
 	api.tasks = {};
 	api.tasks.tasks = {};
 	api.tasks.timers = {};
-	api.tasks.cycleTimeMS = 50;
+	api.tasks.cycleTimeMS = 100;
 	api.tasks.reloadPeriodicsTime = 1000 * 60 * 60; // once an hour
-	api.tasks.processTimer = null;
+	api.tasks.processTimers = [];
 
 	if(api.redis.enable === true){
 		api.tasks.redisQueue = "actionHero::tasks";
@@ -15,6 +15,12 @@ var initTasks = function(api, next)
 		api.tasks.redisProcessingQueue = "actionHero::tasksClaimed";
 	}else{
 		api.tasks.queue = [];
+	}
+
+	// catch for old AH config files
+	// 0 is allowed, but null is not
+	if(api.configData.general.workers == null){
+		api.configData.general.workers = 1;
 	}
 	
 	api.tasks.enqueue = function(api, taskName, runAtTime, params, next){
@@ -187,29 +193,37 @@ var initTasks = function(api, next)
 		})
 	};
 	
-	api.tasks.process = function(api){		
-		clearTimeout(api.tasks.processTimer);
+	api.tasks.process = function(api, worker_id){	
+		clearTimeout(api.tasks.processTimers[worker_id]);
 		api.tasks.getNextTask(api, function(task){
 			if(task == null){
-				api.tasks.processTimer = setTimeout(api.tasks.process, api.tasks.cycleTimeMS, api);
+				api.tasks.processTimers[worker_id] = setTimeout(api.tasks.process, api.tasks.cycleTimeMS, api, worker_id);
 			}else{
 				api.tasks.run(api, task.taskName, task.params, function(run){
 					if(run){
-						api.log("ran task: "+task.taskName, "yellow");
+						api.log("[timer "+worker_id+"] ran task: "+task.taskName, "yellow");
 					}else{
-						api.log("task failed to run: "+JSON.stringify(task), "red")
+						api.log("[timer "+worker_id+"] task failed to run: "+JSON.stringify(task), "red")
 					}
 					if(api.redis.enable === true){
-						// remove the task from the processing queue
+						// remove the task from the processing queue (redis only)
 						api.redis.client.hdel(api.tasks.redisProcessingQueue, task.taskName, function(){
-							api.tasks.enqueuePeriodicTask(api, api.tasks.tasks[task.taskName], function(){
-								api.tasks.processTimer = setTimeout(api.tasks.process, api.tasks.cycleTimeMS, api);
-							});
+							if(api.tasks.tasks[task.taskName].frequency > 0){
+								api.tasks.enqueuePeriodicTask(api, api.tasks.tasks[task.taskName], function(){
+									api.tasks.processTimers[worker_id] = setTimeout(api.tasks.process, api.tasks.cycleTimeMS, api, worker_id);
+								});
+							}else{
+								api.tasks.processTimers[worker_id] = setTimeout(api.tasks.process, api.tasks.cycleTimeMS, api, worker_id);
+							}
 						});
 					}else{
-						api.tasks.enqueuePeriodicTask(api, api.tasks.tasks[task.taskName], function(){
-							api.tasks.processTimer = setTimeout(api.tasks.process, api.tasks.cycleTimeMS, api);
-						});
+						if(api.tasks.tasks[task.taskName].frequency > 0){
+							api.tasks.enqueuePeriodicTask(api, api.tasks.tasks[task.taskName], function(){
+								api.tasks.processTimers[worker_id] = setTimeout(api.tasks.process, api.tasks.cycleTimeMS, api, worker_id);
+							});
+						}else{
+							api.tasks.processTimers[worker_id] = setTimeout(api.tasks.process, api.tasks.cycleTimeMS, api, worker_id);
+						}
 					}
 				});
 			}
@@ -220,7 +234,7 @@ var initTasks = function(api, next)
 		if(task.frequency > 0){
 			var runAtTime = new Date().getTime() + task.frequency;
 			api.tasks.enqueue(api, task.name, runAtTime, null, function(){
-				next();
+				if(typeof next == "function"){ next(); }
 			});
 		}
 	}
@@ -228,70 +242,54 @@ var initTasks = function(api, next)
 	api.tasks.startPeriodicTasks = function(api, next){
 		api.log("setting up periodic tasks...", "yellow")
 		clearTimeout(api.tasks.periodicTaskReloader);
-		if(api.tasks.tasks.length == 0){
-			api.tasks.periodicTaskReloader = setTimeout(api.tasks.startPeriodicTasks, api.tasks.reloadPeriodicsTime, api);
-			if(typeof next == "function"){ next(); }
-		}else{
-			var started = 0;
-			for(var i in api.tasks.tasks){
-				started++;
-				var task = api.tasks.tasks[i];
-				if(task.frequency > 0){
-					api.tasks.enqueuePeriodicTask(api, task, function(){
-						started--;
-						if(started == 0){
-							api.tasks.periodicTaskReloader = setTimeout(api.tasks.startPeriodicTasks, api.tasks.reloadPeriodicsTime, api);
-							if(typeof next == "function"){ next(); }
-						}
-					});
-				}else{
-					process.nextTick(function (){
-						started--;
-						if(started == 0){
-							api.tasks.periodicTaskReloader = setTimeout(api.tasks.startPeriodicTasks, api.tasks.reloadPeriodicsTime, api);
-							if(typeof next == "function"){ next(); }
-						}
-					})
-				}
+		for(var i in api.tasks.tasks){
+			var task = api.tasks.tasks[i];
+			if(task.frequency > 0){
+				api.tasks.enqueuePeriodicTask(api, task);
 			}
-		}		
+		}
+		api.tasks.periodicTaskReloader = setTimeout(api.tasks.startPeriodicTasks, api.tasks.reloadPeriodicsTime, api);
+		if(typeof next == "function"){ next(); }
 	}
 
-	api.tasks.clearSuckClaimedTasks = function(api, next){
+	api.tasks.clearStuckClaimedTasks = function(api, next){
+		if(api.redis.enable === true){
+			function done(started){
+				started--;
+				if(started == 0){ next(); }
+				else{ return started }
+			}
 
-		function done(started){
-			started--;
-			if(started == 0){ next(); }
-			else{ return started }
-		}
-
-		var started = 0;
-		if(api.tasks.tasks.length == 0){
-			started = done(started)
-		}else{
-			for(var i in api.tasks.tasks){
-				var task = api.tasks.tasks[i];
-				started++;
-				if(task.frequency > 0 && task.scope == "any"){
-					api.redis.client.hget(api.tasks.redisProcessingQueue, task.name, function (err, taskProcessing){
-						if(taskProcessing){
-							var redisTask = JSON.parse(taskProcessing);
-							if(redisTask.server == api.id){
-								api.log(" > clearing a stuck task `"+redisTask.taskName+"` which was previously registered by this server", ["yellow", "bold"]);
-								api.redis.client.hdel(api.tasks.redisProcessingQueue, redisTask.taskName, function(){
+			var started = 0;
+			if(api.tasks.tasks.length == 0){
+				started = done(started)
+			}else{
+				for(var i in api.tasks.tasks){
+					var task = api.tasks.tasks[i];
+					started++;
+					if(task.frequency > 0 && task.scope == "any"){
+						api.redis.client.hget(api.tasks.redisProcessingQueue, task.name, function (err, taskProcessing){
+							if(taskProcessing){
+								var redisTask = JSON.parse(taskProcessing);
+								if(redisTask.server == api.id){
+									api.log(" > clearing a stuck task `"+redisTask.taskName+"` which was previously registered by this server", ["yellow", "bold"]);
+									api.redis.client.hdel(api.tasks.redisProcessingQueue, redisTask.taskName, function(){
+										started = done(started)
+									});
+								}else{
 									started = done(started)
-								});
+								}
 							}else{
 								started = done(started)
 							}
-						}else{
-							started = done(started)
-						}
-					});
-				}else{
-					started = done(started)
+						});
+					}else{
+						started = done(started)
+					}
 				}
 			}
+		}else{
+			next();
 		}
 	}
 	
@@ -315,35 +313,53 @@ var initTasks = function(api, next)
 		}
 	}
 	
+	function loadFolder(path){
+		api.fs.readdirSync(path).forEach( function(file) {
+			if(path[path.length - 1] != "/"){ path += "/"; } 
+			var fullfFilePath = path + file;
+			if (file[0] != "."){
+				stats = api.fs.statSync(fullfFilePath);
+				if(stats.isDirectory()){
+					loadFolder(fullfFilePath);
+				}else if(stats.isSymbolicLink()){
+					var realPath = readlinkSync(fullfFilePath);
+					loadFolder(realPath);
+				}else if(stats.isFile()){
+					var taskName = file.split(".")[0];
+					api.tasks.tasks[taskName] = require(path + file).task;
+					validateTask(api, api.tasks.tasks[taskName]);
+					api.log("task loaded: " + taskName + ", " + fullfFilePath, "yellow");
+				}else{
+					api.log(file+" is a type of file I cannot read", "red")
+				}
+			}
+		});
+	}
+
 	var taskFolders = [ 
 		process.cwd() + "/tasks/", 
-		process.cwd() + "/node_modules/actionHero/tasks/"
 	]
-	
+
 	for(var i in taskFolders){
-		var folder = taskFolders[i];
-		if(api.fs.existsSync(folder)){
-			api.fs.readdirSync(folder).forEach( function(file) {
-				if (file != ".DS_Store"){
-					var taskName = file.split(".")[0];
-					if(require.cache[folder + file] != null){
-						delete require.cache[folder + file];
-					}
-					var thisTask = require(folder + file)["task"];
-					api.tasks.tasks[thisTask.name] = require(folder + file).task;
-					validateTask(api, api.tasks.tasks[thisTask.name]);
-					api.log("task loaded: " + taskName, "yellow");
+		loadFolder(taskFolders[i]);
+	}
+
+	// I should be started in api.js, after everything has loaded
+	api.tasks.startTaskProcessing = function(api, next){
+		api.tasks.clearStuckClaimedTasks(api, function(){
+			api.tasks.startPeriodicTasks(api, function(){
+				var i = 0;
+				api.log("starting "+api.configData.general.workers+" task timers", "yellow")
+				while(i < api.configData.general.workers){
+					api.tasks.process(api, i);
+					i++;
 				}
+				next();	
 			});
-		}
+		});
 	}
 	
-	api.tasks.clearSuckClaimedTasks(api, function(){
-		api.tasks.startPeriodicTasks(api, function(){
-			setTimeout(api.tasks.process, 5000, api); // pause to ensure the rest of init
-			next();	
-		});
-	});
+	next();
 }
 
 /////////////////////////////////////////////////////////////////////
