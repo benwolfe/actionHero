@@ -56,8 +56,8 @@ suite.addBatch({
   'actionClusters should be aware of other members (peer 1 )':{
     topic: function(){ 
     	var cb = this.callback; 
-    	apis[0].redis.client.llen("actionHero::peers", function(err, length){
-			apis[0].redis.client.lrange("actionHero::peers", 0, length, function(err, peers){
+    	apis[0].redis.client.llen("actionHero:peers", function(err, length){
+			apis[0].redis.client.lrange("actionHero:peers", 0, length, function(err, peers){
 				cb(peers)
 			});
 		});
@@ -73,8 +73,8 @@ suite.addBatch({
   'actionClusters should be aware of other members (peer 2 )':{
     topic: function(){ 
     	var cb = this.callback; 
-    	apis[1].redis.client.llen("actionHero::peers", function(err, length){
-			apis[1].redis.client.lrange("actionHero::peers", 0, length, function(err, peers){
+    	apis[1].redis.client.llen("actionHero:peers", function(err, length){
+			apis[1].redis.client.lrange("actionHero:peers", 0, length, function(err, peers){
 				cb(peers)
 			});
 		});
@@ -90,8 +90,8 @@ suite.addBatch({
   'actionClusters should be aware of other members (peer 3 )':{
     topic: function(){ 
     	var cb = this.callback; 
-    	apis[2].redis.client.llen("actionHero::peers", function(err, length){
-			apis[2].redis.client.lrange("actionHero::peers", 0, length, function(err, peers){
+    	apis[2].redis.client.llen("actionHero:peers", function(err, length){
+			apis[2].redis.client.lrange("actionHero:peers", 0, length, function(err, peers){
 				cb(peers)
 			});
 		});
@@ -110,7 +110,7 @@ suite.addBatch({
 suite.addBatch({
   'actionCluster.stopForReconnect - 2':{
     topic: function(){ specHelper.stopServer(2, this.callback); },
-    'actionHero should be stopped - 0': function(resp){ specHelper.assert.equal(resp, true); } }
+    'actionHero should be stopped - 2': function(resp){ specHelper.assert.equal(resp, true); } }
 });
 
 suite.addBatch({
@@ -123,8 +123,8 @@ suite.addBatch({
   'actionClusters should only have one entry... me!':{
     topic: function(){ 
     	var cb = this.callback; 
-    	apis[0].redis.client.llen("actionHero::peers", function(err, length){
-			apis[0].redis.client.lrange("actionHero::peers", 0, length, function(err, peers){
+    	apis[0].redis.client.llen("actionHero:peers", function(err, length){
+			apis[0].redis.client.lrange("actionHero:peers", 0, length, function(err, peers){
 				cb(peers)
 			});
 		});
@@ -136,23 +136,39 @@ suite.addBatch({
 });
 
 suite.addBatch({
-  'actionCluster.reStartForReconnect - 2':{
-    topic: function(){ specHelper.restartServer(2, this.callback); },
-    'actionHero should be restarted - 2': function(resp){ specHelper.assert.equal(resp, true); } }
+  'actionCluster.reStartForReconnect - 1':{
+    topic: function(){ 
+    	var cb = this.callback;
+    	specHelper.restartServer(1, function(resp, api){
+    		apis[1] = api;
+    		cb(true,{restart_resp: resp});
+    	}); 
+    },
+    'actionHero should be restarted - 1': function(err, obj){ 
+    	specHelper.assert.equal(obj.restart_resp, true); 
+    } }
 });
 
 suite.addBatch({
-  'actionCluster.reStartForReconnect - 1':{
-    topic: function(){ specHelper.restartServer(1, this.callback); },
-    'actionHero should be restarted - 1': function(resp){ specHelper.assert.equal(resp, true); } }
+  'actionCluster.reStartForReconnect - 2':{
+    topic: function(){ 
+    	var cb = this.callback;
+    	specHelper.restartServer(2, function(resp, api){
+    		apis[2] = api;
+    		cb(true,{restart_resp: resp});
+    	}); 
+    },
+    'actionHero should be restarted - 2': function(err, obj){ 
+    	specHelper.assert.equal(obj.restart_resp, true); 
+    } }
 });
 
 suite.addBatch({
   'actionClusters should all be back again':{
     topic: function(){ 
     	var cb = this.callback; 
-    	apis[0].redis.client.llen("actionHero::peers", function(err, length){
-			apis[0].redis.client.lrange("actionHero::peers", 0, length, function(err, peers){
+    	apis[0].redis.client.llen("actionHero:peers", function(err, length){
+			apis[0].redis.client.lrange("actionHero:peers", 0, length, function(err, peers){
 				cb(peers)
 			});
 		});
@@ -292,8 +308,40 @@ suite.addBatch({
 
 // ////////////////////////////////////////////////////////////////////////////
 // // Tests to ensure that tasks only fire the proper number of time for "all" and "any"
-
 // // TODO: THIS.
+
+////////////////////////////////////////////////////////////////////////////
+// If a peer goes away, it should be removed from the list of peers (ping)
+
+suite.addBatch({
+  'A server stops responding':{
+    topic: function(){ 
+    	var cb = this.callback;
+    	var sleepTime = (apis[0].redis.lostPeerCheckTime * 3) + 1;
+    	apis[2].redis.pingTime = sleepTime * 2; //block from happening again in this test
+    	clearTimeout(apis[2].redis.pingTimer);
+    	clearTimeout(apis[2].redis.lostPeerTimer);
+    	setTimeout(function(){
+    		apis[0].redis.checkForDroppedPeers(apis[0], function(){
+	    		apis[0].redis.client.hgetall("actionHero:peerPings", function (err, peerPings){
+	    			apis[0].redis.client.llen("actionHero:peers", function(err, length){
+						apis[0].redis.client.lrange("actionHero:peers", 0, length, function(err, peers){
+							cb(true, {peerPings: peerPings, peers: peers})
+						});
+					});
+	    		});
+    		});
+    	}, sleepTime );
+    },
+    'peer should be gone': function(resp, data){ 
+    	var count = 0;
+    	for (var i in data.peerPings){
+    		count++;
+    	}
+    	specHelper.assert.equal(count, 2); 
+    	specHelper.assert.equal(data.peers.length, 2); 
+    }}
+});
 
 ////////////////////////////////////////////////////////////////////////////
 // stop the servers when done so the other tests can use a single instance
