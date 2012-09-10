@@ -1,5 +1,16 @@
 # Action Hero API Versions
 
+## Version 3.0.8
+
+**CLUSTER**
+- A new, production-ready cluster example (complete with unix signal handling and 0-down time reloads for code changes)
+
+**Bugs**
+- Stopping an actionHero node will remove himself from `actionHero:peerPings`
+- Cleaned up the colorizer within the logger
+- Shuttting down the actionHero when no servers were active to begin with returns true on `actionHero.stop()`
+- final message sent to TCP clients on disconnect or shutdown now matches, "Bye!"
+
 ## Version 3.0.7
 
 **Action Cluster**
