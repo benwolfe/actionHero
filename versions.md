@@ -1,25 +1,44 @@
 # Action Hero API Versions
 
+## Version 3.0.9
+
+**Development Mode**
+
+- actionHero now has a development mode! files in `/actions` and `/tasks` will be watched for changes, and reloaded on the fly.  
+- this uses fs.watchFile() and doesn't work on all OSs / file systems.
+- new files won't be loaded in just yet, only existing files when the app was booted will be monitored
+- as deleting a file might crash your application, we will not attempt to re-load delted files
+- if you have changed the `task.frequency` of a periodic task, you will the old timer value will be in use until the event fires at least once after the change 
+- Don't use this in production! 
+
+**Bugs**
+
+- default config does not use redis again
+
 ## Version 3.0.8
 
 **CLUSTER**
+
 - A new, production-ready cluster example (complete with unix signal handling and 0-down time reloads for code changes)
 
 **Bugs**
+
 - Stopping an actionHero node will remove himself from `actionHero:peerPings`
 - Cleaned up the colorizer within the logger
-- Shuttting down the actionHero when no servers were active to begin with returns true on `actionHero.stop()`
+- Shutting down the actionHero when no servers were active to begin with returns true on `actionHero.stop()`
 - final message sent to TCP clients on disconnect or shutdown now matches, "Bye!"
 
 ## Version 3.0.7
 
 **Action Cluster**
-- a new global hash, actionHero:peerPings, will store the last pings from each peer.  They should ping every ~500ms.  This can be used to detect when peers disapear
+
+- a new global hash, actionHero:peerPings, will store the last pings from each peer.  They should ping every ~500ms.  This can be used to detect when peers disappear
 - disconnected peers are removed from the global list, and any tasks they were working on are re-enqueued
 
 **Bugs**
+
 - fixed a bug where using the generator to create a new action with no inputs would generate invalid syntax
-- refactor redis namespace to be `actionHero:` rather than `actionHero:`
+- refactor redis name-space to be `actionHero:` rather than `actionHero:`
 - actionHero.restart now returns the api object on success `actionHero.restart(true, api)`
 
 ## Version 3.0.6
@@ -69,7 +88,7 @@
 
 **Notes**
 
-- Configuration to set how many task workers each actionHero node has.  You now are **requried** to set `api.configData.general.workers`
+- Configuration to set how many task workers each actionHero node has.  You now are **required** to set `api.configData.general.workers`
 - Added generators for actions and tasks
   - `npm run-script actionHero generateAction`
   - `npm run-script actionHero generateTask`
@@ -91,7 +110,7 @@
 - Only tasks present in your project will be loaded (like actions).  Now that there is a generator which will copy in some default actions, loading tasks within actionHero is not needed.
 - Project reorganization per the above
 - remove hredis from the project
-  - hredis is awesome, but this makes the project have less complex compiled dependancies.  You should add it to your project if you want fast redis communication, but it isn't *required* for actionHero to function
+  - hredis is awesome, but this makes the project have less complex compiled dependencies.  You should add it to your project if you want fast redis communication, but it isn't *required* for actionHero to function
 - This release adds more configuration options to webSockets in the form of `api.configData.webSockets.logLevel` (integer) and `configData.webSockets.settings` (which is an array strings which will be applied to socketIO's 'set' command)
 
 ## Version 3.0.0
